@@ -1,3 +1,4 @@
+require 'houston/notification'
 # Represents the message you wish to send. 
 # An APN::Notification belongs to an APN::Device.
 # 
@@ -22,16 +23,19 @@ class APN::Notification < APN::Base
   belongs_to :device, :class_name => 'APN::Device'
   has_one    :app,    :class_name => 'APN::App', :through => :device
   
+  scope :unsent, -> { where(sent_at: nil) }
+
   # Stores the text alert message you want to send to the device.
   # 
   # If the message is over 150 characters long it will get truncated
   # to 150 characters with a <tt>...</tt>
-  def alert=(message)
-    if !message.blank? && message.size > 150
-      message = truncate(message, :length => 150)
-    end
-    write_attribute('alert', message)
-  end
+
+  # def alert=(message)
+  #   if !message.blank? && message.size > 150
+  #     message = truncate(message, :length => 150)
+  #   end
+  #   write_attribute('alert', message)
+  # end
   
   # Creates a Hash that will be the payload of an APN.
   # 
@@ -63,6 +67,37 @@ class APN::Notification < APN::Base
       end
     end
     result
+  end
+
+  class PrivateHoustonNotification < ::Houston::Notification
+
+    attr_accessor :apn_notification_model
+
+    attr_writer :sent_at
+
+   def mark_as_sent!
+      super
+      apn_notification_model.update_column :sent_at,  sent_at
+    end
+
+    def mark_as_unsent!
+      super
+      apn_notification_model.update_column :sent_at,  sent_at
+    end
+
+  end
+
+  # generate the notification for this
+  def houston_notification
+    n = PrivateHoustonNotification.new custom_properties.merge({
+      token: device.token,
+      alert: alert,
+      badge: badge,
+      sound: sound
+    })
+    n.apn_notification_model = self
+    n.sent_at = self.sent_at # safety to not send messages twice etc...
+    n
   end
   
   # Creates the JSON string required for an APN message.

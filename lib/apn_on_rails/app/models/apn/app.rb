@@ -1,3 +1,5 @@
+require 'houston'
+
 class APN::App < APN::Base
 
   has_many :groups, :class_name => 'APN::Group', :dependent => :destroy
@@ -23,7 +25,10 @@ class APN::App < APN::Base
       raise APN::Errors::MissingCertificateError.new
       return
     end
-    APN::App.send_notifications_for_cert(self.cert, self.id)
+    client = Houston::Client.send(Rails.env.production? ? :production : :development)
+    client.certificate = cert
+    client.push notifications.includes(:device).unsent.map(&:houston_notification)
+    # APN::App.send_notifications_for_cert(self.cert, self.id)
   end
 
   def self.send_notifications

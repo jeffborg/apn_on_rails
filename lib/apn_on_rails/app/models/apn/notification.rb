@@ -89,12 +89,12 @@ class APN::Notification < APN::Base
 
   # generate the notification for this
   def houston_notification
-    n = PrivateHoustonNotification.new custom_properties.merge({
+    n = PrivateHoustonNotification.new({
       token: device.token,
       alert: alert,
       badge: badge,
       sound: sound
-    })
+    }.merge(custom_properties))
     n.apn_notification_model = self
     n.sent_at = self.sent_at # safety to not send messages twice etc...
     n
